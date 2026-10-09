@@ -1,0 +1,6 @@
+{
+	"go.testTags": "testhash",
+	"go.lintTool": "golangci-lint",
+	"go.lintFlags": ["--fast-only=false"],
+	"go.lintOnSave": "package"
+}

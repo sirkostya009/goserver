@@ -1,0 +1,80 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    # formatting/style preferences that fight the existing code style rather
+    # than catch bugs
+    - wsl
+    - wsl_v5
+    - nlreturn
+    - noinlineerr
+    - godox
+    - lll
+    - godot
+    - tagalign
+
+    # opinionated design rules not followed in this codebase
+    - exhaustruct
+    - exhaustruct_v5
+    - ireturn
+    - varnamelen
+    - nonamedreturns
+    - gochecknoglobals
+    - gochecknoinits
+    - depguard
+    - gomodguard
+    - gomodguard_v2
+    - tagliatelle
+    - wrapcheck
+    - forbidigo
+    - testpackage
+    # id types use value receivers for reads (String, MarshalText, Value) and
+    # pointer receivers where an interface requires mutation (Scan,
+    # UnmarshalText) — the standard, correct split, which recvcheck flags as
+    # inconsistent
+    - recvcheck
+
+    # complexity/magic-number linters, too noisy on generated-adjacent and
+    # query-builder heavy code
+    - funlen
+    - gocyclo
+    - gocognit
+    - cyclop
+    - maintidx
+    - nestif
+    - mnd
+    - dupl
+    - err113
+    - goconst
+
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    errcheck:
+      exclude-functions:
+        # a deferred rollback after a commit returns sql.ErrTxDone, which is
+        # expected and always ignored (see CLAUDE.md)
+        - (*github.com/sirkostya009/barm.Tx).Rollback
+        - (goserver/internal/repository.Tx).Rollback
+    gosec:
+      excludes:
+        # errcheck already exempts Close() as idiomatic to ignore; G104 just
+        # re-flags the same calls
+        - G104
+
+  exclusions:
+    generated: strict
+    presets:
+      - std-error-handling
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

@@ -1,0 +1,8 @@
+*
+!go.mod
+!go.sum
+!cmd/server/
+!cmd/migrate/
+!domain/
+!internal/
+**/*_test.go
