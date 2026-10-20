@@ -1,0 +1,41 @@
+x-db: &db
+  DATABASE_URL: postgres://goserver:goserver@postgres:5432/goserver?sslmode=disable
+
+services:
+  postgres:
+    image: postgres:18-trixie
+    environment:
+      POSTGRES_USER: goserver
+      POSTGRES_PASSWORD: goserver
+      POSTGRES_DB: goserver
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: [CMD, pg_isready, -U, goserver, -d, goserver]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  migrate:
+    build: .
+    image: goserver
+    entrypoint: [/migrate]
+    command: [all]
+    environment: *db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  server:
+    image: goserver
+    environment:
+      <<: *db
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN, at least 32 characters}
+    ports:
+      - 8080:8080
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
