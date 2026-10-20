@@ -37,7 +37,7 @@ type Health struct{ c *conn }
 
 // Health sends GET /api/health.
 func (g Health) Health(ctx context.Context) (domain.Health, error) {
-	return one[domain.Health](g.c.do(ctx, "GET", "/api/health", nil))
+	return g.c.do(ctx, "GET", "/api/health", nil).one[domain.Health]()
 }
 
 // Auth calls the routes of httpapi.AuthApi.
@@ -48,19 +48,19 @@ type Auth struct{ c *conn }
 //
 // POST /api/auth/login
 func (g Auth) Login(ctx context.Context, body domain.Login) (domain.User, error) {
-	return one[domain.User](send(ctx, g.c, "POST", "/api/auth/login", body))
+	return g.c.send(ctx, "POST", "/api/auth/login", body).one[domain.User]()
 }
 
 // Logout ends the session and clears its cookie.
 //
 // POST /api/auth/logout
 func (g Auth) Logout(ctx context.Context) error {
-	return none(g.c.do(ctx, "POST", "/api/auth/logout", nil))
+	return g.c.do(ctx, "POST", "/api/auth/logout", nil).none()
 }
 
 // Me sends GET /api/auth/me.
 func (g Auth) Me(ctx context.Context) (domain.User, error) {
-	return one[domain.User](g.c.do(ctx, "GET", "/api/auth/me", nil))
+	return g.c.do(ctx, "GET", "/api/auth/me", nil).one[domain.User]()
 }
 
 // Keys calls the routes of httpapi.KeysApi.
@@ -68,19 +68,19 @@ type Keys struct{ c *conn }
 
 // List sends GET /api/keys.
 func (g Keys) List(ctx context.Context) ([]domain.APIKey, error) {
-	return many[domain.APIKey](g.c.do(ctx, "GET", "/api/keys", nil))
+	return g.c.do(ctx, "GET", "/api/keys", nil).many[domain.APIKey]()
 }
 
 // Create answers with the key's token, which is shown this once.
 //
 // POST /api/keys
 func (g Keys) Create(ctx context.Context, body domain.CreateAPIKey) (domain.NewAPIKey, error) {
-	return one[domain.NewAPIKey](send(ctx, g.c, "POST", "/api/keys", body))
+	return g.c.send(ctx, "POST", "/api/keys", body).one[domain.NewAPIKey]()
 }
 
 // Revoke sends DELETE /api/keys/{id}.
 func (g Keys) Revoke(ctx context.Context, id domain.ID) error {
-	return none(g.c.do(ctx, "DELETE", "/api/keys/"+url.PathEscape(id.String()), nil))
+	return g.c.do(ctx, "DELETE", "/api/keys/"+url.PathEscape(id.String()), nil).none()
 }
 
 // Tenants calls the routes of httpapi.TenantsApi.
@@ -88,17 +88,17 @@ type Tenants struct{ c *conn }
 
 // List sends GET /api/tenants.
 func (g Tenants) List(ctx context.Context) ([]domain.Tenant, error) {
-	return many[domain.Tenant](g.c.do(ctx, "GET", "/api/tenants", nil))
+	return g.c.do(ctx, "GET", "/api/tenants", nil).many[domain.Tenant]()
 }
 
 // Query sends QUERY /api/tenants.
 func (g Tenants) Query(ctx context.Context, body domain.TenantFilter) ([]domain.Tenant, error) {
-	return many[domain.Tenant](send(ctx, g.c, "QUERY", "/api/tenants", body))
+	return g.c.send(ctx, "QUERY", "/api/tenants", body).many[domain.Tenant]()
 }
 
 // Create sends POST /api/tenants.
 func (g Tenants) Create(ctx context.Context, body domain.CreateTenant) (domain.Tenant, error) {
-	return one[domain.Tenant](send(ctx, g.c, "POST", "/api/tenants", body))
+	return g.c.send(ctx, "POST", "/api/tenants", body).one[domain.Tenant]()
 }
 
 // Users calls the routes of httpapi.UsersApi.
@@ -106,27 +106,27 @@ type Users struct{ c *conn }
 
 // List sends GET /api/users.
 func (g Users) List(ctx context.Context) ([]domain.User, error) {
-	return many[domain.User](g.c.do(ctx, "GET", "/api/users", nil))
+	return g.c.do(ctx, "GET", "/api/users", nil).many[domain.User]()
 }
 
 // Query sends QUERY /api/users.
 func (g Users) Query(ctx context.Context, body domain.UserFilter) ([]domain.User, error) {
-	return many[domain.User](send(ctx, g.c, "QUERY", "/api/users", body))
+	return g.c.send(ctx, "QUERY", "/api/users", body).many[domain.User]()
 }
 
 // Create sends POST /api/users.
 func (g Users) Create(ctx context.Context, body domain.CreateUser) (domain.User, error) {
-	return one[domain.User](send(ctx, g.c, "POST", "/api/users", body))
+	return g.c.send(ctx, "POST", "/api/users", body).one[domain.User]()
 }
 
 // Get sends GET /api/users/{id}.
 func (g Users) Get(ctx context.Context, id domain.ID) (domain.User, error) {
-	return one[domain.User](g.c.do(ctx, "GET", "/api/users/"+url.PathEscape(id.String()), nil))
+	return g.c.do(ctx, "GET", "/api/users/"+url.PathEscape(id.String()), nil).one[domain.User]()
 }
 
 // Delete sends DELETE /api/users/{id}.
 func (g Users) Delete(ctx context.Context, id domain.ID) error {
-	return none(g.c.do(ctx, "DELETE", "/api/users/"+url.PathEscape(id.String()), nil))
+	return g.c.do(ctx, "DELETE", "/api/users/"+url.PathEscape(id.String()), nil).none()
 }
 
 // Posts calls the routes of httpapi.PostsApi.
@@ -134,17 +134,17 @@ type Posts struct{ c *conn }
 
 // List sends GET /api/posts.
 func (g Posts) List(ctx context.Context) ([]domain.Post, error) {
-	return many[domain.Post](g.c.do(ctx, "GET", "/api/posts", nil))
+	return g.c.do(ctx, "GET", "/api/posts", nil).many[domain.Post]()
 }
 
 // Query sends QUERY /api/posts.
 func (g Posts) Query(ctx context.Context, body domain.PostFilter) ([]domain.Post, error) {
-	return many[domain.Post](send(ctx, g.c, "QUERY", "/api/posts", body))
+	return g.c.send(ctx, "QUERY", "/api/posts", body).many[domain.Post]()
 }
 
 // Create sends POST /api/posts.
 func (g Posts) Create(ctx context.Context, body domain.CreatePost) (domain.Post, error) {
-	return one[domain.Post](send(ctx, g.c, "POST", "/api/posts", body))
+	return g.c.send(ctx, "POST", "/api/posts", body).one[domain.Post]()
 }
 
 // Import writes a JSON array of posts in one round trip, reading it an element
@@ -153,7 +153,7 @@ func (g Posts) Create(ctx context.Context, body domain.CreatePost) (domain.Post,
 //
 // POST /api/posts/import
 func (g Posts) Import(ctx context.Context, body []domain.CreatePost) (domain.PostImport, error) {
-	return one[domain.PostImport](sendMany(ctx, g.c, "POST", "/api/posts/import", body))
+	return g.c.sendMany(ctx, "POST", "/api/posts/import", body).one[domain.PostImport]()
 }
 
 // ImportUnbatched is Import reading the whole array first, then writing a post
@@ -161,20 +161,20 @@ func (g Posts) Import(ctx context.Context, body []domain.CreatePost) (domain.Pos
 //
 // POST /api/posts/import/unbatched
 func (g Posts) ImportUnbatched(ctx context.Context, body []domain.CreatePost) (domain.PostImport, error) {
-	return one[domain.PostImport](sendMany(ctx, g.c, "POST", "/api/posts/import/unbatched", body))
+	return g.c.sendMany(ctx, "POST", "/api/posts/import/unbatched", body).one[domain.PostImport]()
 }
 
 // Get sends GET /api/posts/{id}.
 func (g Posts) Get(ctx context.Context, id domain.ID) (domain.Post, error) {
-	return one[domain.Post](g.c.do(ctx, "GET", "/api/posts/"+url.PathEscape(id.String()), nil))
+	return g.c.do(ctx, "GET", "/api/posts/"+url.PathEscape(id.String()), nil).one[domain.Post]()
 }
 
 // Delete sends DELETE /api/posts/{id}.
 func (g Posts) Delete(ctx context.Context, id domain.ID) error {
-	return none(g.c.do(ctx, "DELETE", "/api/posts/"+url.PathEscape(id.String()), nil))
+	return g.c.do(ctx, "DELETE", "/api/posts/"+url.PathEscape(id.String()), nil).none()
 }
 
 // ListByAuthor sends GET /api/users/{id}/posts.
 func (g Posts) ListByAuthor(ctx context.Context, id domain.ID) ([]domain.Post, error) {
-	return many[domain.Post](g.c.do(ctx, "GET", "/api/users/"+url.PathEscape(id.String())+"/posts", nil))
+	return g.c.do(ctx, "GET", "/api/users/"+url.PathEscape(id.String())+"/posts", nil).many[domain.Post]()
 }

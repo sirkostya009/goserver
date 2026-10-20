@@ -104,7 +104,7 @@ func (g *goRenderer) method(rt *gen.Route, recv, conn string) error {
 			typ, send = "[]"+typ, "sendMany"
 		}
 		params = append(params, "body "+typ)
-		call = fmt.Sprintf("%s(ctx, %s, %q, %s, body)", send, conn, rt.Method, urlExpr)
+		call = fmt.Sprintf("%s.%s(ctx, %q, %s, body)", conn, send, rt.Method, urlExpr)
 	}
 
 	b := &g.body
@@ -122,7 +122,7 @@ func (g *goRenderer) method(rt *gen.Route, recv, conn string) error {
 	sig := fmt.Sprintf("func (%s) %s(%s)", recv, rt.Handler, strings.Join(params, ", "))
 
 	if rt.Result == nil {
-		fmt.Fprintf(b, "%s error {\n\treturn none(%s)\n}\n", sig, call)
+		fmt.Fprintf(b, "%s error {\n\treturn %s.none()\n}\n", sig, call)
 		return nil
 	}
 	elem, err := g.goType(gen.TypeRef{Pkg: rt.Result.Pkg, Name: rt.Result.Name, Node: rt.Result.Node})
@@ -130,9 +130,9 @@ func (g *goRenderer) method(rt *gen.Route, recv, conn string) error {
 		return fmt.Errorf("%s: result: %w", where, err)
 	}
 	if rt.Result.Slice {
-		fmt.Fprintf(b, "%s ([]%s, error) {\n\treturn many[%[2]s](%s)\n}\n", sig, elem, call)
+		fmt.Fprintf(b, "%s ([]%s, error) {\n\treturn %s.many[%s]()\n}\n", sig, elem, call, elem)
 	} else {
-		fmt.Fprintf(b, "%s (%s, error) {\n\treturn one[%[2]s](%s)\n}\n", sig, elem, call)
+		fmt.Fprintf(b, "%s (%s, error) {\n\treturn %s.one[%s]()\n}\n", sig, elem, call, elem)
 	}
 	return nil
 }

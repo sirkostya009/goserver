@@ -42,24 +42,28 @@ func readJSONSeq[T ggen.StreamDecoder[T]](r *http.Request) iter.Seq2[T, error] {
 
 func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
-	var login domain.Login
+	var i0 int
+	var i1 int
+	var s1 string
+	var loginBody domain.Login
 	var user domain.User
 	var health domain.Health
 	var aPIKeys []domain.APIKey
-	var createAPIKey domain.CreateAPIKey
+	var createAPIKeyBody domain.CreateAPIKey
 	var newAPIKey domain.NewAPIKey
 	var posts []domain.Post
-	var postFilter domain.PostFilter
-	var createPost domain.CreatePost
+	var postFilterBody domain.PostFilter
+	var createPostBody domain.CreatePost
 	var post domain.Post
 	var postImport domain.PostImport
 	var tenants []domain.Tenant
-	var tenantFilter domain.TenantFilter
-	var createTenant domain.CreateTenant
+	var tenantFilterBody domain.TenantFilter
+	var createTenantBody domain.CreateTenant
 	var tenant domain.Tenant
 	var users []domain.User
-	var userFilter domain.UserFilter
-	var createUser domain.CreateUser
+	var userFilterBody domain.UserFilter
+	var createUserBody domain.CreateUser
+	var iD domain.ID
 	path := r.URL.Path
 	if len(path) < 5 || path[:5] != "/api/" {
 		notFound(w)
@@ -74,18 +78,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		r.Pattern = "POST /api/auth/login"
-		login, err = readJSON[domain.Login](r)
+		loginBody, err = readJSON[domain.Login](r)
 		if err != nil {
 			badRequest(w, err)
 			return
 		}
-		user, err = s.AuthApi.Login(w, r.Context(), login)
+		user, err = s.AuthApi.Login(w, r.Context(), loginBody)
 		if err != nil {
 			handleError(r.Context(), w, err)
 			return
 		}
 		w.Header()["Content-Type"] = __jsonCT
-		if err := ggen.WriteTo(w, user); err != nil {
+		if err = ggen.WriteTo(w, user); err != nil {
 			handleError(r.Context(), w, err)
 			return
 		}
@@ -97,7 +101,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		r.Pattern = "POST /api/auth/logout"
-		if err := s.AuthApi.Logout(w, r.Context()); err != nil {
+		if err = s.AuthApi.Logout(w, r.Context()); err != nil {
 			handleError(r.Context(), w, err)
 		}
 		return
@@ -114,7 +118,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header()["Content-Type"] = __jsonCT
-		if err := ggen.WriteTo(w, user); err != nil {
+		if err = ggen.WriteTo(w, user); err != nil {
 			handleError(r.Context(), w, err)
 			return
 		}
@@ -132,7 +136,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header()["Content-Type"] = __jsonCT
-		if err := ggen.WriteTo(w, health); err != nil {
+		if err = ggen.WriteTo(w, health); err != nil {
 			handleError(r.Context(), w, err)
 			return
 		}
@@ -150,7 +154,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, aPIKeys); err != nil {
+			if err = ggen.WriteSliceTo(w, aPIKeys); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -159,18 +163,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireTenant(w, r) {
 				return
 			}
-			createAPIKey, err = readJSON[domain.CreateAPIKey](r)
+			createAPIKeyBody, err = readJSON[domain.CreateAPIKey](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			newAPIKey, err = s.KeysApi.Create(w, r.Context(), createAPIKey)
+			newAPIKey, err = s.KeysApi.Create(w, r.Context(), createAPIKeyBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteTo(w, newAPIKey); err != nil {
+			if err = ggen.WriteTo(w, newAPIKey); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -192,7 +196,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, posts); err != nil {
+			if err = ggen.WriteSliceTo(w, posts); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -201,18 +205,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireTenant(w, r) {
 				return
 			}
-			postFilter, err = readJSON[domain.PostFilter](r)
+			postFilterBody, err = readJSON[domain.PostFilter](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			posts, err = s.PostsApi.Query(r.Context(), postFilter)
+			posts, err = s.PostsApi.Query(r.Context(), postFilterBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, posts); err != nil {
+			if err = ggen.WriteSliceTo(w, posts); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -221,18 +225,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireTenant(w, r) {
 				return
 			}
-			createPost, err = readJSON[domain.CreatePost](r)
+			createPostBody, err = readJSON[domain.CreatePost](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			post, err = s.PostsApi.Create(r.Context(), createPost)
+			post, err = s.PostsApi.Create(r.Context(), createPostBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteTo(w, post); err != nil {
+			if err = ggen.WriteTo(w, post); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -257,7 +261,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header()["Content-Type"] = __jsonCT
-		if err := ggen.WriteTo(w, postImport); err != nil {
+		if err = ggen.WriteTo(w, postImport); err != nil {
 			handleError(r.Context(), w, err)
 			return
 		}
@@ -278,7 +282,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header()["Content-Type"] = __jsonCT
-		if err := ggen.WriteTo(w, postImport); err != nil {
+		if err = ggen.WriteTo(w, postImport); err != nil {
 			handleError(r.Context(), w, err)
 			return
 		}
@@ -296,7 +300,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, tenants); err != nil {
+			if err = ggen.WriteSliceTo(w, tenants); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -305,18 +309,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireAdmin(w, r) {
 				return
 			}
-			tenantFilter, err = readJSON[domain.TenantFilter](r)
+			tenantFilterBody, err = readJSON[domain.TenantFilter](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			tenants, err = s.TenantsApi.Query(r.Context(), tenantFilter)
+			tenants, err = s.TenantsApi.Query(r.Context(), tenantFilterBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, tenants); err != nil {
+			if err = ggen.WriteSliceTo(w, tenants); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -325,18 +329,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireAdmin(w, r) {
 				return
 			}
-			createTenant, err = readJSON[domain.CreateTenant](r)
+			createTenantBody, err = readJSON[domain.CreateTenant](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			tenant, err = s.TenantsApi.Create(r.Context(), createTenant)
+			tenant, err = s.TenantsApi.Create(r.Context(), createTenantBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteTo(w, tenant); err != nil {
+			if err = ggen.WriteTo(w, tenant); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -358,7 +362,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, users); err != nil {
+			if err = ggen.WriteSliceTo(w, users); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -367,18 +371,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireTenant(w, r) {
 				return
 			}
-			userFilter, err = readJSON[domain.UserFilter](r)
+			userFilterBody, err = readJSON[domain.UserFilter](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			users, err = s.UsersApi.Query(r.Context(), userFilter)
+			users, err = s.UsersApi.Query(r.Context(), userFilterBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteSliceTo(w, users); err != nil {
+			if err = ggen.WriteSliceTo(w, users); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -387,18 +391,18 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if !requireTenant(w, r) {
 				return
 			}
-			createUser, err = readJSON[domain.CreateUser](r)
+			createUserBody, err = readJSON[domain.CreateUser](r)
 			if err != nil {
 				badRequest(w, err)
 				return
 			}
-			user, err = s.UsersApi.Create(r.Context(), createUser)
+			user, err = s.UsersApi.Create(r.Context(), createUserBody)
 			if err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
 			w.Header()["Content-Type"] = __jsonCT
-			if err := ggen.WriteTo(w, user); err != nil {
+			if err = ggen.WriteTo(w, user); err != nil {
 				handleError(r.Context(), w, err)
 				return
 			}
@@ -408,44 +412,44 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if i := strings.IndexByte(path, '/'); i > 0 {
-		switch path[:i] {
+	if i0 = strings.IndexByte(path, '/'); i0 > 0 {
+		switch path[:i0] {
 		case "keys":
 			if r.Method != "DELETE" {
 				w.Header().Set("Allow", "DELETE")
 				methodNotAllowed(w)
 				return
 			}
-			path = path[i+1:]
+			path = path[i0+1:]
 			if strings.IndexByte(path, '/') < 0 {
-				if t1, err := domain.ParseID(path); err == nil {
+				if iD, err = domain.ParseID(path); err == nil {
 					r.Pattern = "DELETE /api/keys/{id}"
 					if !requireTenant(w, r) {
 						return
 					}
-					if err := s.KeysApi.Revoke(r.Context(), t1); err != nil {
+					if err = s.KeysApi.Revoke(r.Context(), iD); err != nil {
 						handleError(r.Context(), w, err)
 					}
 					return
 				}
 			}
 		case "users":
-			path = path[i+1:]
-			if i := strings.IndexByte(path, '/'); i < 0 {
-				if t1, err := domain.ParseID(path); err == nil {
+			path = path[i0+1:]
+			if i1 = strings.IndexByte(path, '/'); i1 < 0 {
+				if iD, err = domain.ParseID(path); err == nil {
 					switch r.Method {
 					case "GET":
 						r.Pattern = "GET /api/users/{id}"
 						if !requireTenant(w, r) {
 							return
 						}
-						user, err = s.UsersApi.Get(r.Context(), t1)
+						user, err = s.UsersApi.Get(r.Context(), iD)
 						if err != nil {
 							handleError(r.Context(), w, err)
 							return
 						}
 						w.Header()["Content-Type"] = __jsonCT
-						if err := ggen.WriteTo(w, user); err != nil {
+						if err = ggen.WriteTo(w, user); err != nil {
 							handleError(r.Context(), w, err)
 							return
 						}
@@ -454,7 +458,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						if !requireTenant(w, r) {
 							return
 						}
-						if err := s.UsersApi.Delete(r.Context(), t1); err != nil {
+						if err = s.UsersApi.Delete(r.Context(), iD); err != nil {
 							handleError(r.Context(), w, err)
 						}
 					default:
@@ -463,10 +467,10 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					}
 					return
 				}
-			} else if i > 0 {
-				s1 := path[:i]
-				if t1, err := domain.ParseID(s1); err == nil {
-					path = path[i+1:]
+			} else if i1 > 0 {
+				s1 = path[:i1]
+				if iD, err = domain.ParseID(s1); err == nil {
+					path = path[i1+1:]
 					if path == "posts" {
 						if r.Method != "GET" {
 							w.Header().Set("Allow", "GET")
@@ -477,13 +481,13 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						if !requireTenant(w, r) {
 							return
 						}
-						posts, err = s.PostsApi.ListByAuthor(r.Context(), t1)
+						posts, err = s.PostsApi.ListByAuthor(r.Context(), iD)
 						if err != nil {
 							handleError(r.Context(), w, err)
 							return
 						}
 						w.Header()["Content-Type"] = __jsonCT
-						if err := ggen.WriteSliceTo(w, posts); err != nil {
+						if err = ggen.WriteSliceTo(w, posts); err != nil {
 							handleError(r.Context(), w, err)
 							return
 						}
@@ -492,22 +496,22 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		case "posts":
-			path = path[i+1:]
+			path = path[i0+1:]
 			if strings.IndexByte(path, '/') < 0 {
-				if t1, err := domain.ParseID(path); err == nil {
+				if iD, err = domain.ParseID(path); err == nil {
 					switch r.Method {
 					case "GET":
 						r.Pattern = "GET /api/posts/{id}"
 						if !requireTenant(w, r) {
 							return
 						}
-						post, err = s.PostsApi.Get(r.Context(), t1)
+						post, err = s.PostsApi.Get(r.Context(), iD)
 						if err != nil {
 							handleError(r.Context(), w, err)
 							return
 						}
 						w.Header()["Content-Type"] = __jsonCT
-						if err := ggen.WriteTo(w, post); err != nil {
+						if err = ggen.WriteTo(w, post); err != nil {
 							handleError(r.Context(), w, err)
 							return
 						}
@@ -516,7 +520,7 @@ func (s *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						if !requireTenant(w, r) {
 							return
 						}
-						if err := s.PostsApi.Delete(r.Context(), t1); err != nil {
+						if err = s.PostsApi.Delete(r.Context(), iD); err != nil {
 							handleError(r.Context(), w, err)
 						}
 					default:

@@ -5,6 +5,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -94,17 +95,26 @@ var jsonCT = []string{"application/json"}
 
 const (
 	maxErrorBody = 4 << 10
-	maxPrealloc  = 4 << 20
+	// past this an unread body is cheaper to drop with its connection
+	maxDrain    = 4 << 10
+	maxPrealloc = 4 << 20
 )
 
-func (c *conn) do(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
+// response is one still to be read, or the error that stopped the request
+// before one came. Its methods read it.
+type response struct {
+	res *http.Response
+	err error
+}
+
+func (c *conn) do(ctx context.Context, method, path string, body []byte) response {
 	var r io.Reader
 	if body != nil {
 		r = bytes.NewReader(body)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.base+path, r)
 	if err != nil {
-		return nil, err
+		return response{err: err}
 	}
 	if body != nil {
 		req.Header["Content-Type"] = jsonCT
@@ -117,52 +127,51 @@ func (c *conn) do(ctx context.Context, method, path string, body []byte) (*http.
 	}
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return response{err: err}
 	}
 	if res.StatusCode < 200 || res.StatusCode > 299 {
-		return nil, readError(res)
+		return response{err: readError(res)}
 	}
-	return res, nil
+	return response{res: res}
 }
 
 // send encodes into a buffer of its own rather than a pooled one: the
 // transport may still be reading the body after Do returns.
-func send[B ggen.Marshaler](ctx context.Context, c *conn, method, path string, body B) (*http.Response, error) {
+func (c *conn) send[B ggen.Marshaler](ctx context.Context, method, path string, body B) response {
 	b, err := body.AppendJSON(make([]byte, 0, body.JSONSize()))
 	if err != nil {
-		return nil, err
+		return response{err: err}
 	}
 	return c.do(ctx, method, path, b)
 }
 
-func sendMany[B ggen.Marshaler](ctx context.Context, c *conn, method, path string, body []B) (*http.Response, error) {
-	if body == nil {
-		body = []B{} // null is no array
-	}
+func (c *conn) sendMany[B ggen.Marshaler](ctx context.Context, method, path string, body []B) response {
 	b, err := ggen.MarshalSlice(body)
 	if err != nil {
-		return nil, err
+		return response{err: err}
+	}
+	if body == nil {
+		b = []byte("[]")
 	}
 	return c.do(ctx, method, path, b)
 }
 
-func none(res *http.Response, err error) error {
-	if err != nil {
+func (r response) none() error {
+	if r.err != nil {
+		return r.err
+	}
+	defer r.res.Body.Close()
+	if _, err := io.CopyN(io.Discard, r.res.Body, maxDrain); !errors.Is(err, io.EOF) {
 		return err
 	}
-	defer res.Body.Close()
-	_, err = io.Copy(io.Discard, res.Body)
-	return err
+	return nil
 }
 
 // one and many decode straight from the bytes read. Each response gets fresh
 // ones, so the strings decoded may alias them.
-func one[T ggen.Decoder[T]](res *http.Response, err error) (T, error) {
+func (r response) one[T ggen.Decoder[T]]() (T, error) {
 	var v T
-	if err != nil {
-		return v, err
-	}
-	data, err := readAll(res)
+	data, err := r.read()
 	if err != nil {
 		return v, err
 	}
@@ -176,25 +185,25 @@ func one[T ggen.Decoder[T]](res *http.Response, err error) (T, error) {
 	return v, nil
 }
 
-func many[T ggen.Decoder[T]](res *http.Response, err error) ([]T, error) {
-	if err != nil {
-		return nil, err
-	}
-	data, err := readAll(res)
+func (r response) many[T ggen.Decoder[T]]() ([]T, error) {
+	data, err := r.read()
 	if err != nil {
 		return nil, err
 	}
 	return ggen.UnmarshalSlice[T](data)
 }
 
-func readAll(res *http.Response) ([]byte, error) {
-	defer res.Body.Close()
-	if n := res.ContentLength; n >= 0 && n <= maxPrealloc {
+func (r response) read() ([]byte, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	defer r.res.Body.Close()
+	if n := r.res.ContentLength; n >= 0 && n <= maxPrealloc {
 		b := make([]byte, n)
-		_, err := io.ReadFull(res.Body, b)
+		_, err := io.ReadFull(r.res.Body, b)
 		return b, err
 	}
-	return io.ReadAll(res.Body)
+	return io.ReadAll(r.res.Body)
 }
 
 func readError(res *http.Response) error {

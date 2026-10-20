@@ -10,7 +10,7 @@ require (
 	github.com/sirkostya009/barm/pgxdriver v0.0.0-20261007133432-a38b714fb5b9
 	github.com/sirkostya009/ggen v0.0.0-20260920131101-55ebb6f41d87
 	github.com/sirkostya009/ggen/gen v0.0.0-20260920131101-55ebb6f41d87
-	github.com/sirkostya009/rr v0.0.0-20261006164520-a53db0a732a9
+	github.com/sirkostya009/rr v0.0.0-20261011161321-b1b1e270eced
 	go.opentelemetry.io/contrib/bridges/otelslog v0.20.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.71.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.71.0
