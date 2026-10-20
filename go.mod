@@ -8,8 +8,8 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/sirkostya009/barm v0.0.0-20261007133432-a38b714fb5b9
 	github.com/sirkostya009/barm/pgxdriver v0.0.0-20261007133432-a38b714fb5b9
-	github.com/sirkostya009/ggen v0.0.0-20260920131101-55ebb6f41d87
-	github.com/sirkostya009/ggen/gen v0.0.0-20260920131101-55ebb6f41d87
+	github.com/sirkostya009/ggen v0.0.0-20261017213240-bc891b094e3a
+	github.com/sirkostya009/ggen/gen v0.0.0-20261017213240-bc891b094e3a
 	github.com/sirkostya009/rr v0.0.0-20261011161321-b1b1e270eced
 	go.opentelemetry.io/contrib/bridges/otelslog v0.20.1
 	go.opentelemetry.io/contrib/exporters/autoexport v0.71.0
@@ -39,7 +39,7 @@ require (
 	github.com/prometheus/common v0.72.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
-	github.com/sirkostya009/ggen/cmd/ggen v0.0.0-20260920131101-55ebb6f41d87 // indirect
+	github.com/sirkostya009/ggen/cmd/ggen v0.0.0-20261017213240-bc891b094e3a // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/bridges/prometheus v0.71.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.23.0 // indirect
