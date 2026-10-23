@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"iter"
 
 	"github.com/sirkostya009/barm"
@@ -54,47 +56,55 @@ func (r *postRepository) Insert(ctx context.Context, in domain.CreatePost) (doma
 
 func (r *postRepository) InsertIfAuthor(ctx context.Context, in domain.CreatePost) (domain.Post, error) {
 	db := r.handle(ctx)
-	p, err := insertIfAuthor(db, tenantSchema(ctx), &in).OneAs[domain.Post](ctx)
+	p, err := insertIfAuthor(db, tenantSchema(ctx), in.Title, in.Body, in.AuthorID).OneAs[domain.Post](ctx)
 	return p, mapErr(err)
 }
 
 func (r *postRepository) InsertEach(ctx context.Context, in iter.Seq2[domain.CreatePost, error]) ([]domain.Post, error) {
 	db := r.handle(ctx)
-	s := tenantSchema(ctx)
+	// rendered once, each post only binds its values
+	t := insertIfAuthor(db, tenantSchema(ctx), barm.Named("title", nil), barm.Named("body", nil), barm.Named("author", nil)).
+		TemplateAs[domain.Post]()
 	// nothing reaches the database before Run, and the batch is one implicit
 	// transaction there, so a failure writes none of it
 	b := db.Batch()
-	var rows []*barm.BatchResult[[]domain.Post]
+	b.Grow(1024)
+	rows := make([]*barm.BatchResult[domain.Post], 0, 1024) // 8 kb
 	for p, err := range in {
 		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, b.SliceAs[domain.Post](insertIfAuthor(db, s, &p)))
+		rows = append(rows, b.OneAs[domain.Post](bindPost(t, &p)))
 	}
-	if err := b.Run(ctx); err != nil {
+	if err := b.Run(ctx); err != nil { //nolint:staticcheck // SA4023 misreads Run, which returns nil once the batch ran
 		return nil, mapErr(err)
 	}
 	out := make([]domain.Post, len(rows))
 	for i, r := range rows {
-		if v := r.Value(); len(v) > 0 {
-			out[i] = v[0]
+		if r.Err() == nil {
+			out[i] = r.Value()
+		} else if !errors.Is(r.Err(), sql.ErrNoRows) {
+			return nil, mapErr(r.Err())
 		}
 	}
 	return out, nil
 }
 
-// insertIfAuthor writes in only when its author exists, so a missing one is no
-// rows rather than an error, which would end a batch. The author is locked
-// against a delete until the write commits, which the foreign key would fail.
-// The SQL is the same for every post of a tenant, so pgx prepares it once per
-// connection.
-func insertIfAuthor(db barm.Handle, s schema, in *domain.CreatePost) *barm.InsertQuery[domain.CreatePost] {
-	author := db.Select[domain.User]().
+// insertIfAuthor writes a post only when its author exists, so a missing one is
+// no row, which fails that post alone rather than the batch a foreign key
+// violation would end. The author is locked against a delete until the write
+// commits. The values are the post's, or the named arguments of a template.
+func insertIfAuthor(db barm.Handle, s schema, title, body, author any) *barm.InsertQuery[domain.CreatePost] {
+	sel := db.Select[domain.User]().
 		Apply(s.Q).
-		ColumnExpr("u.id, ?, ?", in.Title, in.Body).
-		Where("u.id = ?", in.AuthorID).
+		ColumnExpr("u.id, ?, ?", title, body).
+		Where("u.id = ?", author).
 		For("KEY SHARE")
-	return db.Insert[domain.CreatePost]().Apply(s.Q).Table(postsTable).Select(author)
+	return db.Insert[domain.CreatePost]().Apply(s.Q).Table(postsTable).Select(sel)
+}
+
+func bindPost(t *barm.InsertTemplate[domain.CreatePost, domain.Post], in *domain.CreatePost) *barm.Bound[domain.Post] {
+	return t.With(barm.Named("title", in.Title), barm.Named("body", in.Body), barm.Named("author", in.AuthorID))
 }
 
 func (r *postRepository) Delete(ctx context.Context, id domain.ID) error {
