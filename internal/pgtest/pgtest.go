@@ -34,23 +34,23 @@ func adminURL() string {
 // NewDatabase creates an empty database, dropped when the test ends, and
 // returns its url. It is for tests that need a database to themselves, such as
 // the ones that migrate it. The test is skipped when no server answers.
-func NewDatabase(t *testing.T) string {
-	t.Helper()
+func NewDatabase(tb testing.TB) string {
+	tb.Helper()
 	admin, err := dial(adminURL())
 	if err != nil {
-		t.Skipf("no postgres at TEST_DATABASE_URL: %v", err)
+		tb.Skipf("no postgres at TEST_DATABASE_URL: %v", err)
 	}
 
 	name, err := create(admin)
 	if err != nil {
 		admin.Close(context.Background())
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		drop(admin, name)
 		admin.Close(context.Background())
 	})
-	return nameToURL(t, name)
+	return nameToURL(tb, name)
 }
 
 // Run is what a package's TestMain calls. It creates one database for the whole
@@ -205,11 +205,11 @@ func drop(admin *pgx.Conn, name string) {
 	_, _ = admin.Exec(context.Background(), `drop database if exists `+name+` with (force)`)
 }
 
-func nameToURL(t *testing.T, name string) string {
-	t.Helper()
+func nameToURL(tb testing.TB, name string) string {
+	tb.Helper()
 	u, err := url.Parse(adminURL())
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	u.Path = "/" + name
 	return u.String()
