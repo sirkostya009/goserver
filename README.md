@@ -2,7 +2,7 @@
 
 Toy multi-tenant backend wiring together [rr](https://github.com/sirkostya009/rr)
 (codegen router), [ggen](https://github.com/sirkostya009/ggen) (codegen JSON) and
-barm (query builder) over postgres.
+[barm](https://github.com/sirkostya009/barm) (query builder) over postgres.
 
 ## Layout
 
@@ -235,6 +235,16 @@ to reject something has to end there, since postgres refuses the rest of a
 transaction after a failed statement. Repository and migration tests still take
 a database each, because they migrate it.
 
+The hooks under `.githooks` run gofmt, vet and golangci-lint before a commit,
+and the tests and a stale-codegen check before a push:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+CI (`.github/workflows/ci.yml`) runs the same, plus the TypeScript client and
+the docker build.
+
 ## Regenerate
 
 ```sh
@@ -301,13 +311,16 @@ against.
 | ------ | --------------------------- |
 | GET    | /api/health                 |
 | GET    | /api/tenants                |
+| QUERY  | /api/tenants                |
 | POST   | /api/tenants                |
 | GET    | /api/users                  |
+| QUERY  | /api/users                  |
 | POST   | /api/users                  |
 | GET    | /api/users/{id}             |
 | DELETE | /api/users/{id}             |
 | GET    | /api/users/{id}/posts       |
 | GET    | /api/posts                  |
+| QUERY  | /api/posts                  |
 | POST   | /api/posts                  |
 | POST   | /api/posts/import           |
 | POST   | /api/posts/import/unbatched |

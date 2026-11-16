@@ -1,0 +1,19 @@
+#!/bin/sh
+# fast checks on what is about to be committed
+set -e
+
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go')
+[ -z "$files" ] && exit 0
+
+unformatted=$(echo "$files" | xargs "$(go env GOROOT)/bin/gofmt" -l)
+if [ -n "$unformatted" ]; then
+	echo "gofmt:" >&2
+	echo "$unformatted" >&2
+	exit 1
+fi
+
+go vet ./...
+
+if command -v golangci-lint >/dev/null; then
+	golangci-lint run ./...
+fi

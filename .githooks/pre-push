@@ -1,0 +1,19 @@
+#!/bin/sh
+# what ci runs, short of the docker build
+set -e
+
+before=$(git diff | git hash-object --stdin)
+go generate ./...
+if [ "$(git diff | git hash-object --stdin)" != "$before" ]; then
+	echo "go generate changed files, commit them" >&2
+	exit 1
+fi
+
+test -z "$(go fix -diff ./...)" || { echo "go fix has changes" >&2; exit 1; }
+
+go test -tags testhash ./...
+go test ./internal/auth
+
+if [ -d client/ts/node_modules ]; then
+	(cd client/ts && pnpm check && pnpm test)
+fi
