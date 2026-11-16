@@ -53,10 +53,10 @@ github.com/prometheus/otlptranslator v1.0.0 h1:s0LJW/iN9dkIH+EnhiD3BlkkP5QVIUVEo
 github.com/prometheus/otlptranslator v1.0.0/go.mod h1:vRYWnXvI6aWGpsdY/mOT/cbeVRBlPWtBNDb7kGR3uKM=
 github.com/prometheus/procfs v0.22.0 h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0oics=
 github.com/prometheus/procfs v0.22.0/go.mod h1:CvmFr/GVhIjIvWJZW3tgkODBQMRIf0EyWMQLHCHab58=
-github.com/sirkostya009/barm v0.0.0-20261022233403-969b57aaec7d h1:WferrF49eat71iDxa+cPNZ6m2Jp1peJzL/scl971x50=
-github.com/sirkostya009/barm v0.0.0-20261022233403-969b57aaec7d/go.mod h1:IMX9WrSVVycA1sbscQtpeufTVUaqWZgWJ1mbLM8n+Ss=
-github.com/sirkostya009/barm/pgxdriver v0.0.0-20261022233403-969b57aaec7d h1:hv/wh8tYxTg5ePF80o82u27Wo0AJiaOcKXPgNsnMbRk=
-github.com/sirkostya009/barm/pgxdriver v0.0.0-20261022233403-969b57aaec7d/go.mod h1:NCppeHE3prdE5NB/9ZeCIHVdTSKaS1fOvlpv2rn1G0w=
+github.com/sirkostya009/barm v0.0.0-20261030135335-7e355a76a54f h1:g8jukpBiLSRom6GF1IcBBGreiZf3RtYLJX0KsximUE4=
+github.com/sirkostya009/barm v0.0.0-20261030135335-7e355a76a54f/go.mod h1:IMX9WrSVVycA1sbscQtpeufTVUaqWZgWJ1mbLM8n+Ss=
+github.com/sirkostya009/barm/pgxdriver v0.0.0-20261030135335-7e355a76a54f h1:7wP46MgnE8D5N6NobnnX+UQmqX7k3kgw+v1+Ii7cD5U=
+github.com/sirkostya009/barm/pgxdriver v0.0.0-20261030135335-7e355a76a54f/go.mod h1:NCppeHE3prdE5NB/9ZeCIHVdTSKaS1fOvlpv2rn1G0w=
 github.com/sirkostya009/ggen v0.0.0-20261017213240-bc891b094e3a h1:Uf+GJM8OXvy+VWCOQXqWX1KfyJAW1GxNrzv4ZDs0nFY=
 github.com/sirkostya009/ggen v0.0.0-20261017213240-bc891b094e3a/go.mod h1:KsO3er+8Xup6ukXOq0RnojuRIi5OX69vxT1C6JHUL4w=
 github.com/sirkostya009/ggen/cmd/ggen v0.0.0-20261017213240-bc891b094e3a h1:gNGEZrPQEoJYKnqWHN5aNQLMjZYLXMi7/qWGqtstPIU=

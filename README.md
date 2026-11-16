@@ -52,7 +52,7 @@ derived from the id by `domain.TenantSchema`. Nothing is looked up: the name is
 need quoting and that sort like the id, so by creation time for v7.
 
 Below the api nothing takes a tenant argument. Services pass the context
-along, and tenant repositories apply `tenantSchema(ctx).Q`, which hands the schema to barm's
+along, and tenant repositories hand `tenantSchema(ctx)` to barm's
 `Schema`, so a call is one round trip: no registry check, no transaction, no
 `search_path`. A `//rr:pre` guard on the tenant-scoped controllers answers 401
 to a request with no working credential, and 400 to the operator's missing or

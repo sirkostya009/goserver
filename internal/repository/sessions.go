@@ -44,7 +44,7 @@ func (r *sessionRepository) Insert(ctx context.Context, userID domain.ID, hash a
 	db := r.handle(ctx)
 	row := newSession{UserID: userID, TokenHash: hash, ExpiresAt: expiresAt}
 	s, err := db.Insert[newSession]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Table(sessionsTable).
 		Values(&row).
 		OneAs[Session](ctx)
@@ -54,7 +54,7 @@ func (r *sessionRepository) Insert(ctx context.Context, userID domain.ID, hash a
 func (r *sessionRepository) ByHash(ctx context.Context, hash auth.Hash) (Session, error) {
 	db := r.handle(ctx)
 	s, err := db.Select[Session]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Where("token_hash = ?", hash).
 		Where("expires_at > now()").
 		One(ctx)
@@ -69,7 +69,7 @@ func (r *sessionRepository) Delete(ctx context.Context, id domain.ID) error {
 func (r *sessionRepository) DeleteExpired(ctx context.Context, userID domain.ID) error {
 	db := r.handle(ctx)
 	_, err := db.Delete[Session]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Where("user_id = ?", userID).
 		Where("expires_at <= now()").
 		Exec(ctx)
@@ -80,7 +80,7 @@ func (r *sessionRepository) DeleteExpired(ctx context.Context, userID domain.ID)
 func (r *sessionRepository) remove(ctx context.Context, id domain.ID) (auth.Hash, error) {
 	db := r.handle(ctx)
 	hash, err := db.Delete[Session]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Where("id = ?", id).
 		Returning("token_hash").
 		OneAs[auth.Hash](ctx)

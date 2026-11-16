@@ -40,13 +40,13 @@ const usersTable = "users"
 type userRepository struct{ base }
 
 func (r *userRepository) Query(ctx context.Context, f domain.UserFilter) ([]domain.User, error) {
-	users, err := r.handle(ctx).Select[domain.User]().Apply(tenantSchema(ctx).Q, f.Q).Slice(ctx)
+	users, err := r.handle(ctx).Select[domain.User]().Schema(tenantSchema(ctx)).Apply(f.Q).Slice(ctx)
 	return users, mapErr(err)
 }
 
 func (r *userRepository) Get(ctx context.Context, id domain.ID) (domain.User, error) {
 	db := r.handle(ctx)
-	u, err := db.Select[domain.User]().Apply(tenantSchema(ctx).Q).Where("id = ?", id).One(ctx)
+	u, err := db.Select[domain.User]().Schema(tenantSchema(ctx)).Where("id = ?", id).One(ctx)
 	return u, mapErr(err)
 }
 
@@ -54,7 +54,7 @@ func (r *userRepository) Insert(ctx context.Context, in domain.CreateUser, passw
 	db := r.handle(ctx)
 	row := newUser{CreateUser: in, PasswordHash: passwordHash}
 	u, err := db.Insert[newUser]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Table(usersTable).
 		Values(&row).
 		OneAs[domain.User](ctx)
@@ -63,11 +63,11 @@ func (r *userRepository) Insert(ctx context.Context, in domain.CreateUser, passw
 
 func (r *userRepository) Credentials(ctx context.Context, email string) (UserCredentials, error) {
 	db := r.handle(ctx)
-	c, err := db.Select[UserCredentials]().Apply(tenantSchema(ctx).Q).Where("email = ?", email).One(ctx)
+	c, err := db.Select[UserCredentials]().Schema(tenantSchema(ctx)).Where("email = ?", email).One(ctx)
 	return c, mapErr(err)
 }
 
 func (r *userRepository) Delete(ctx context.Context, id domain.ID) error {
 	db := r.handle(ctx)
-	return deleted(db.Delete[domain.User]().Apply(tenantSchema(ctx).Q).Where("id = ?", id).Exec(ctx))
+	return deleted(db.Delete[domain.User]().Schema(tenantSchema(ctx)).Where("id = ?", id).Exec(ctx))
 }

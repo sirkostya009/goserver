@@ -57,8 +57,8 @@ fails on a field left nil.
 **Tenancy** is one postgres database with a `shared` schema plus a schema per tenant.
 The tenant id is inside the caller's token (see Auth), `httpapi.Server.ServeHTTP` reads
 it once and puts a `domain.TenantContext` (id + schema name) in the request context, and
-repositories put a query in it with `Apply(tenantSchema(ctx).Q)`: a generic method value,
-since a closure cannot be generic and `Apply` infers a method's type. The schema name
+repositories put a query in it with `Schema(tenantSchema(ctx))`, which every barm
+builder takes as a name or as a template's `IdentSlot`. The schema name
 is a pure function of the id (`domain.TenantSchema`, base32hex of the uuid), so there
 is no lookup, no cache and nothing to keep in sync. A tenant that does not exist shows
 up as a missing relation and maps to 404. Never add a lookup on the request path.
@@ -113,7 +113,7 @@ carries column tags but no `BaseModel`.
 (`domain.UserFilter` and friends), `GET` stays as the unfiltered first page, and every
 list is paged (`domain.DefaultLimit` 50, `MaxLimit` 200). Each filter has a `Q` method
 (`domain/filter_query.go`) that a repository hands to barm's `Apply`:
-`db.Select[domain.Post]().Apply(tenantSchema(ctx).Q, f.Q).Slice(ctx)`. In `Q` values always bind as
+`db.Select[domain.Post]().Schema(tenantSchema(ctx)).Apply(f.Q).Slice(ctx)`. In `Q` values always bind as
 arguments and sort columns are looked up in a whitelist, falling back to `id` —
 nothing from a filter may reach the query text. `likeContains` escapes `%`, `_` and `\`.
 A slice binds as one Postgres array, so a list matches with `Where("id = ANY(?)", ids)`:

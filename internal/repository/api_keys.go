@@ -32,7 +32,7 @@ func (r *apiKeyRepository) Insert(ctx context.Context, userID domain.ID, in doma
 	db := r.handle(ctx)
 	row := newAPIKey{CreateAPIKey: in, UserID: userID, TokenHash: hash}
 	k, err := db.Insert[newAPIKey]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Table(apiKeysTable).
 		Values(&row).
 		OneAs[domain.APIKey](ctx)
@@ -42,7 +42,7 @@ func (r *apiKeyRepository) Insert(ctx context.Context, userID domain.ID, in doma
 func (r *apiKeyRepository) ByHash(ctx context.Context, hash auth.Hash) (domain.APIKey, error) {
 	db := r.handle(ctx)
 	k, err := db.Select[domain.APIKey]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Where("token_hash = ?", hash).
 		Where("expires_at IS NULL OR expires_at > now()").
 		One(ctx)
@@ -52,7 +52,7 @@ func (r *apiKeyRepository) ByHash(ctx context.Context, hash auth.Hash) (domain.A
 func (r *apiKeyRepository) ListByUser(ctx context.Context, userID domain.ID) ([]domain.APIKey, error) {
 	db := r.handle(ctx)
 	keys, err := db.Select[domain.APIKey]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Where("user_id = ?", userID).
 		OrderBy("id").
 		Limit(domain.MaxLimit).
@@ -69,7 +69,7 @@ func (r *apiKeyRepository) Delete(ctx context.Context, id, userID domain.ID) err
 func (r *apiKeyRepository) remove(ctx context.Context, id, userID domain.ID) (auth.Hash, error) {
 	db := r.handle(ctx)
 	hash, err := db.Delete[domain.APIKey]().
-		Apply(tenantSchema(ctx).Q).
+		Schema(tenantSchema(ctx)).
 		Where("id = ?", id).
 		Where("user_id = ?", userID).
 		Returning("token_hash").

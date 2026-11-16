@@ -6,8 +6,8 @@ require (
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/getsentry/sentry-go v0.49.0
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/sirkostya009/barm v0.0.0-20261022233403-969b57aaec7d
-	github.com/sirkostya009/barm/pgxdriver v0.0.0-20261022233403-969b57aaec7d
+	github.com/sirkostya009/barm v0.0.0-20261030135335-7e355a76a54f
+	github.com/sirkostya009/barm/pgxdriver v0.0.0-20261030135335-7e355a76a54f
 	github.com/sirkostya009/ggen v0.0.0-20261017213240-bc891b094e3a
 	github.com/sirkostya009/ggen/gen v0.0.0-20261017213240-bc891b094e3a
 	github.com/sirkostya009/rr v0.0.0-20261017220542-1afcb5b88e01

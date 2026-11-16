@@ -72,13 +72,7 @@ func (b base) handle(ctx context.Context) barm.Handle {
 	return barm.Handle{IDB: b.db}
 }
 
-// schema's Q puts any barm query in the schema, for Apply. It is a method
-// because a closure cannot be generic, and Apply infers a method's type.
-type schema string
-
-func (s schema) Q[Q interface{ Schema(name string) Q }](q Q) Q { return q.Schema(string(s)) }
-
-// tenantSchema is the request tenant's: Apply(tenantSchema(ctx).Q, f.Q).
-func tenantSchema(ctx context.Context) schema {
-	return schema(domain.MustTenant(ctx).Schema)
+// tenantSchema is the request tenant's: Select[T]().Schema(tenantSchema(ctx)).
+func tenantSchema(ctx context.Context) string {
+	return domain.MustTenant(ctx).Schema
 }
