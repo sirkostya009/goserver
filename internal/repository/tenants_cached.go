@@ -4,27 +4,20 @@ import (
 	"context"
 
 	"goserver/domain"
-	"goserver/internal/cache"
 )
 
 type cachedTenantRepository struct {
-	repo    TenantRepository
-	clock   *cache.Clock
-	tenants *cache.Map[string, domain.Tenant]
-}
+	TenantRepository
 
-func (r *cachedTenantRepository) Query(ctx context.Context, f domain.TenantFilter) ([]domain.Tenant, error) {
-	return r.repo.Query(ctx, f)
+	cache *tableCache[string, domain.Tenant]
 }
 
 func (r *cachedTenantRepository) BySlug(ctx context.Context, slug string) (domain.Tenant, error) {
-	return cached(ctx, r.clock, r.tenants, tTenants, slug, func() (domain.Tenant, error) {
-		return r.repo.BySlug(ctx, slug)
-	})
+	return r.cache.get(ctx, slug, func() (domain.Tenant, error) { return r.TenantRepository.BySlug(ctx, slug) })
 }
 
 func (r *cachedTenantRepository) Insert(ctx context.Context, in domain.CreateTenant) (domain.Tenant, error) {
-	t, err := r.repo.Insert(ctx, in)
-	wrote(ctx, tTenants, nil)
+	t, err := r.TenantRepository.Insert(ctx, in)
+	r.cache.wrote(ctx)
 	return t, err
 }

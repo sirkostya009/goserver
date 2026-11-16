@@ -38,43 +38,57 @@ func (r *postRepository) Query(ctx context.Context, f domain.PostFilter) ([]doma
 	return posts, mapErr(err)
 }
 
+var postByID = qb.Select[domain.Post]().Schema(tenantSlot).Where("id = ?", barm.Param("id")).Template[byID]()
+
 func (r *postRepository) Get(ctx context.Context, id domain.ID) (domain.Post, error) {
-	db := r.handle(ctx)
-	p, err := db.Select[domain.Post]().Schema(tenantSchema(ctx)).Where("id = ?", id).One(ctx)
+	p, err := postByID.Via(r.handle(ctx)).One(ctx, byID{tenantSchema(ctx), id})
 	return p, mapErr(err)
 }
+
+type postIn struct {
+	domain.CreatePost
+
+	Schema string `barm:"schema"`
+}
+
+var postInsert = qb.Insert[domain.CreatePost]().Schema(tenantSlot).Table(postsTable).TemplateAs[postIn, domain.Post]()
 
 func (r *postRepository) Insert(ctx context.Context, in domain.CreatePost) (domain.Post, error) {
-	db := r.handle(ctx)
-	p, err := db.Insert[domain.CreatePost]().
-		Schema(tenantSchema(ctx)).
-		Table(postsTable).
-		Values(&in).
-		OneAs[domain.Post](ctx)
+	p, err := postInsert.Via(r.handle(ctx)).One(ctx, postIn{in, tenantSchema(ctx)})
 	return p, mapErr(err)
 }
 
+// insertIfAuthor writes a post only when its author exists, so a missing one is
+// no row, which fails that post alone rather than the batch a foreign key
+// violation would end. The author is locked against a delete until the write
+// commits. A batch splices the schema once while it repeats.
+var insertIfAuthor = qb.Insert[domain.CreatePost]().Schema(tenantSlot).Table(postsTable).Select(
+	qb.Select[domain.User]().
+		Schema(tenantSlot).
+		ColumnExpr("u.id, ?, ?", barm.Param("title"), barm.Param("body")).
+		Where("u.id = ?", barm.Param("author_id")).
+		For("KEY SHARE"),
+).TemplateAs[postIn, domain.Post]()
+
 func (r *postRepository) InsertIfAuthor(ctx context.Context, in domain.CreatePost) (domain.Post, error) {
-	// one post splices its schema as it binds, a copy filled by Ident would cost more
-	p, err := insertIfAuthor.With(barm.Named("schema", tenantSchema(ctx)),
-		barm.Named("title", in.Title), barm.Named("body", in.Body), barm.Named("author", in.AuthorID)).
-		Via(r.handle(ctx)).One(ctx)
+	p, err := insertIfAuthor.Via(r.handle(ctx)).One(ctx, postIn{in, tenantSchema(ctx)})
 	return p, mapErr(err)
 }
 
 func (r *postRepository) InsertEach(ctx context.Context, in iter.Seq2[domain.CreatePost, error]) ([]domain.Post, error) {
 	db := r.handle(ctx)
-	t := insertIfAuthor.Ident(barm.Named("schema", tenantSchema(ctx)))
+	s := tenantSchema(ctx)
 	// nothing reaches the database before Run, and the batch is one implicit
 	// transaction there, so a failure writes none of it
 	b := db.Batch()
 	b.Grow(1024)
+	q := insertIfAuthor.In(b)
 	rows := make([]*barm.BatchResult[domain.Post], 0, 1024) // 8 kb
 	for p, err := range in {
 		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, b.OneAs[domain.Post](bindPost(&t, &p)))
+		rows = append(rows, q.One(postIn{p, s}))
 	}
 	if err := b.Run(ctx); err != nil {
 		return nil, mapErr(err)
@@ -90,25 +104,8 @@ func (r *postRepository) InsertEach(ctx context.Context, in iter.Seq2[domain.Cre
 	return out, nil
 }
 
-// insertIfAuthor writes a post only when its author exists, so a missing one is
-// no row, which fails that post alone rather than the batch a foreign key
-// violation would end. The author is locked against a delete until the write
-// commits. It is rendered once for every tenant, and Ident fills in the schema.
-var insertIfAuthor = func() *barm.InsertTemplate[domain.CreatePost, domain.Post] {
-	qb := barm.NewBuilder(barm.Postgres)
-	author := qb.Select[domain.User]().
-		Schema(barm.IdentSlot("schema")).
-		ColumnExpr("u.id, ?, ?", barm.Named("title", nil), barm.Named("body", nil)).
-		Where("u.id = ?", barm.Named("author", nil)).
-		For("KEY SHARE")
-	return qb.Insert[domain.CreatePost]().Schema(barm.IdentSlot("schema")).Table(postsTable).Select(author).TemplateAs[domain.Post]()
-}()
-
-func bindPost(t *barm.InsertTemplate[domain.CreatePost, domain.Post], in *domain.CreatePost) *barm.Bound[domain.Post] {
-	return t.With(barm.Named("title", in.Title), barm.Named("body", in.Body), barm.Named("author", in.AuthorID))
-}
+var postDelete = qb.Delete[domain.Post]().Schema(tenantSlot).Where("id = ?", barm.Param("id")).Template[byID]()
 
 func (r *postRepository) Delete(ctx context.Context, id domain.ID) error {
-	db := r.handle(ctx)
-	return deleted(db.Delete[domain.Post]().Schema(tenantSchema(ctx)).Where("id = ?", id).Exec(ctx))
+	return deleted(postDelete.Via(r.handle(ctx)).Exec(ctx, byID{tenantSchema(ctx), id}))
 }

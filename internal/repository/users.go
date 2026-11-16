@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 
+	"github.com/sirkostya009/barm"
+
 	"goserver/domain"
 )
 
@@ -25,9 +27,9 @@ type UserCredentials struct {
 	PasswordHash *string `barm:"password_hash"`
 }
 
-// newUser is what Insert writes: the input and the hash of its password, never
+// UserRow is what Insert writes: the input and the hash of its password, never
 // the password.
-type newUser struct {
+type UserRow struct {
 	domain.CreateUser
 
 	PasswordHash string `barm:"password_hash"`
@@ -44,30 +46,40 @@ func (r *userRepository) Query(ctx context.Context, f domain.UserFilter) ([]doma
 	return users, mapErr(err)
 }
 
+var userByID = qb.Select[domain.User]().Schema(tenantSlot).Where("id = ?", barm.Param("id")).Template[byID]()
+
 func (r *userRepository) Get(ctx context.Context, id domain.ID) (domain.User, error) {
-	db := r.handle(ctx)
-	u, err := db.Select[domain.User]().Schema(tenantSchema(ctx)).Where("id = ?", id).One(ctx)
+	u, err := userByID.Via(r.handle(ctx)).One(ctx, byID{tenantSchema(ctx), id})
 	return u, mapErr(err)
 }
+
+type userRowIn struct {
+	UserRow
+
+	Schema string `barm:"schema"`
+}
+
+var userInsert = qb.Insert[UserRow]().Schema(tenantSlot).Table(usersTable).TemplateAs[userRowIn, domain.User]()
 
 func (r *userRepository) Insert(ctx context.Context, in domain.CreateUser, passwordHash string) (domain.User, error) {
-	db := r.handle(ctx)
-	row := newUser{CreateUser: in, PasswordHash: passwordHash}
-	u, err := db.Insert[newUser]().
-		Schema(tenantSchema(ctx)).
-		Table(usersTable).
-		Values(&row).
-		OneAs[domain.User](ctx)
+	u, err := userInsert.Via(r.handle(ctx)).One(ctx, userRowIn{UserRow{in, passwordHash}, tenantSchema(ctx)})
 	return u, mapErr(err)
 }
 
+type byEmail struct {
+	Schema string `barm:"schema"`
+	Email  string `barm:"email"`
+}
+
+var userCredentials = qb.Select[UserCredentials]().Schema(tenantSlot).Where("email = ?", barm.Param("email")).Template[byEmail]()
+
 func (r *userRepository) Credentials(ctx context.Context, email string) (UserCredentials, error) {
-	db := r.handle(ctx)
-	c, err := db.Select[UserCredentials]().Schema(tenantSchema(ctx)).Where("email = ?", email).One(ctx)
+	c, err := userCredentials.Via(r.handle(ctx)).One(ctx, byEmail{tenantSchema(ctx), email})
 	return c, mapErr(err)
 }
 
+var userDelete = qb.Delete[domain.User]().Schema(tenantSlot).Where("id = ?", barm.Param("id")).Template[byID]()
+
 func (r *userRepository) Delete(ctx context.Context, id domain.ID) error {
-	db := r.handle(ctx)
-	return deleted(db.Delete[domain.User]().Schema(tenantSchema(ctx)).Where("id = ?", id).Exec(ctx))
+	return deleted(userDelete.Via(r.handle(ctx)).Exec(ctx, byID{tenantSchema(ctx), id}))
 }

@@ -76,3 +76,17 @@ func (b base) handle(ctx context.Context) barm.Handle {
 func tenantSchema(ctx context.Context) string {
 	return domain.MustTenant(ctx).Schema
 }
+
+// qb renders the templates, rendered once for every tenant and run on the
+// handle Via gives them.
+var qb = barm.NewBuilder(barm.Postgres)
+
+// tenantSlot is where a tenant template's schema goes, filled from the
+// Schema field of its arguments.
+var tenantSlot = barm.IdentSlot("schema")
+
+// byID is a tenant template's arguments for one row.
+type byID struct {
+	Schema string    `barm:"schema"`
+	ID     domain.ID `barm:"id"`
+}

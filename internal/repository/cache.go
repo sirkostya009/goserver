@@ -24,9 +24,6 @@ const (
 	tPosts
 	tSessions
 	tAPIKeys
-
-	// a user takes their posts, sessions and keys with them
-	tUsersCascade = tUsers | tPosts | tSessions | tAPIKeys
 )
 
 // rowKey is a row of a tenant table, by id.
@@ -49,28 +46,48 @@ func tokenKeyOf(ctx context.Context, hash auth.Hash) tokenKey {
 	return tokenKey{domain.MustTenant(ctx).ID, hash}
 }
 
-// newMap is a cache of one table. Every map shares the one clock, so a
+// tableCache is the cache of one table. Every one shares the clock, so a
 // transaction's ticket holds for all of them.
-func newMap[K comparable, V any](clock *cache.Clock) *cache.Map[K, V] {
-	return cache.New[K, V](clock, cacheCapacity, cacheTTL)
+type tableCache[K comparable, V any] struct {
+	m     *cache.Map[K, V]
+	clock *cache.Clock
+	table table
 }
 
-// cached reads k from m, and on a miss runs read and fills m with its row. A
-// transaction that wrote t reads past m and fills nothing.
-func cached[K comparable, V any](ctx context.Context, clock *cache.Clock, m *cache.Map[K, V], t table, k K, read func() (V, error)) (V, error) {
-	ticket := clock.Ticket()
+func newTableCache[K comparable, V any](clock *cache.Clock, t table) *tableCache[K, V] {
+	return &tableCache[K, V]{cache.New[K, V](clock, cacheCapacity, cacheTTL), clock, t}
+}
+
+// get reads k, and on a miss runs read and fills k with its row. A transaction
+// that wrote the table reads past the cache and fills nothing.
+func (c *tableCache[K, V]) get(ctx context.Context, k K, read func() (V, error)) (V, error) {
+	ticket := c.clock.Ticket()
 	if st, ok := txStateFrom(ctx); ok {
-		if st.dirty&t != 0 {
+		if st.dirty&c.table != 0 {
 			return read()
 		}
 		ticket = st.ticket
 	}
-	if v, ok := m.Get(k); ok {
+	if v, ok := c.m.Get(k); ok {
 		return v, nil
 	}
 	v, err := read()
 	if err == nil {
-		m.Fill(k, v, ticket)
+		c.m.Fill(k, v, ticket)
 	}
 	return v, err
+}
+
+// wrote marks the table written by ctx's transaction.
+func (c *tableCache[K, V]) wrote(ctx context.Context) { afterWrite(ctx, c.table, nil) }
+
+// drop is wrote, and invalidates k once the write is durable.
+func (c *tableCache[K, V]) drop(ctx context.Context, k K) {
+	afterWrite(ctx, c.table, func() { c.m.Invalidate(k) })
+}
+
+// dropFunc is drop of every entry f reports. It visits the whole cache, so it
+// is for writes too rare to index for.
+func (c *tableCache[K, V]) dropFunc(ctx context.Context, f func(K, V) bool) {
+	afterWrite(ctx, c.table, func() { c.m.InvalidateFunc(f) })
 }

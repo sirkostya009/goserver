@@ -45,10 +45,10 @@ func (t cachedTxer) Begin(ctx *context.Context, opts *sql.TxOptions) (Tx, error)
 	return tx, nil
 }
 
-// wrote marks t written by ctx's transaction and runs invalidate once the write
-// is durable: on commit, or now outside a transaction. A savepoint rolled back
-// drops its invalidations with its writes.
-func wrote(ctx context.Context, t table, invalidate func()) {
+// afterWrite marks t written by ctx's transaction and runs invalidate once the
+// write is durable: on commit, or now outside a transaction. A savepoint rolled
+// back drops its invalidations with its writes.
+func afterWrite(ctx context.Context, t table, invalidate func()) {
 	st, ok := txStateFrom(ctx)
 	if !ok {
 		if invalidate != nil {

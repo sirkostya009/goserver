@@ -57,8 +57,8 @@ fails on a field left nil.
 **Tenancy** is one postgres database with a `shared` schema plus a schema per tenant.
 The tenant id is inside the caller's token (see Auth), `httpapi.Server.ServeHTTP` reads
 it once and puts a `domain.TenantContext` (id + schema name) in the request context, and
-repositories put a query in it with `Schema(tenantSchema(ctx))`, which every barm
-builder takes as a name or as a template's `IdentSlot`. The schema name
+repositories run a query in it: a template's `tenantSlot` takes the `Schema`
+field of its arguments, and a builder takes `Schema(tenantSchema(ctx))`. The schema name
 is a pure function of the id (`domain.TenantSchema`, base32hex of the uuid), so there
 is no lookup, no cache and nothing to keep in sync. A tenant that does not exist shows
 up as a missing relation and maps to 404. Never add a lookup on the request path.
@@ -93,8 +93,9 @@ from a rollback after commit, which deferred rollbacks ignore.
 repositories, which every test except the cache's own uses. The `cached*` repositories
 (`repository/*_cached.go`, one beside each plain one) wrap the plain ones, so the interfaces carry no cache concerns;
 a plain one exposes an unexported method when the cache needs more than the interface
-returns (`remove` hands back the revoked token's hash). `cached(...)` serves a lookup by
-key, and every write calls `wrote(ctx, table, invalidate)`. `cachedTxer` puts a `txState`
+returns (`remove` hands back the revoked token's hash). Each holds a `tableCache[K, V]` per table it
+touches (the map, the shared clock and the table's bit): `get` serves a lookup by key,
+a write calls `wrote`, or `drop`/`dropFunc` when it must also invalidate. `cachedTxer` puts a `txState`
 in ctx (shared by savepoints) recording which tables the transaction wrote: a clean
 transaction reads the cache, a dirty table is read from the database and never filled
 from. Invalidation runs as a barm `AfterCommit` hook (right away outside a transaction),
@@ -104,8 +105,17 @@ after it. Keys carry the tenant. A write that cascades (deleting a user) marks a
 invalidates every table it reaches. Lists are not cached. The cache is per process: other
 instances only converge by TTL.
 
-**Writes insert a sub-model.** `db.Insert[domain.CreateX]().Schema(s).Table("x").Values(&in).OneAs[domain.X](ctx)`
-returns the full row, so services never map a `CreateX` to an `X` by hand. The table
+**Queries are templates** wherever their SQL is fixed: rendered once at package level
+on `qb` (`barm.NewBuilder`), for every tenant, and run with `.Via(r.handle(ctx))`.
+Their arguments are a small struct (`byID`, `byHash`, ...) whose tags name each
+`barm.Param`, and whose `Schema` field fills `tenantSlot`. Only a list filtered by
+`f.Q` is built per call, since the filter shapes its SQL.
+
+**Writes insert a sub-model.** `qb.Insert[domain.CreateX]().Schema(tenantSlot).Table("x").TemplateAs[xIn, domain.X]()`
+returns the full row, so services never map a `CreateX` to an `X` by hand. The
+arguments `xIn` embed the row beside `Schema`: an insert template binds each column
+from the field it names, and barm only reads embedded fields of an exported type,
+which is why the row types (`UserRow`, `APIKeyRow`, `SessionRow`) are exported. The table
 comes from the *source* model, which is why the repository names it: a `CreateX`
 carries column tags but no `BaseModel`.
 
@@ -125,11 +135,12 @@ JSON array rr reads lazily (ggen's `Stream.Array`), so a handler taking one
 gets no 400 from rr: the service reads it, and maps a decode error to
 `domain.ErrMalformed`. Element types are `multierr`, so an element that only
 broke rules arrives with all of its `ggen.Errors` and the array goes on.
-`PostRepository.InsertEach` queues an insert per element on a barm batch and
-runs it once the array ends: one round trip, one implicit transaction. A
-query that fails ends a batch, so a per-element outcome must not be an error:
-the insert is `INSERT ... SELECT` from the author row (`FOR KEY SHARE`), and a
-missing author is no row rather than a foreign key violation.
+`PostRepository.InsertEach` queues the `insertIfAuthor` template per element
+(`.In(b).One(args)`, which splices the schema once while it repeats) and runs the
+batch once the array ends: one round trip, one implicit transaction. A database
+error ends a batch, so a per-element outcome must not be one: the insert is
+`INSERT ... SELECT` from the author row (`FOR KEY SHARE`), and a missing author is
+that element's `ErrNoRows` rather than a foreign key violation.
 
 **Ids** are `domain.ID`, a named type over stdlib `uuid.UUID`: 22-char unpadded strict
 base64url on the wire, native `uuid` with `default uuidv7()` in postgres. The RFC form

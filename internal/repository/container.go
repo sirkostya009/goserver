@@ -37,15 +37,15 @@ func New(db *barm.DB) Container {
 func NewCached(db *barm.DB) Container {
 	c := New(db)
 	clock := &cache.Clock{}
-	posts := newMap[rowKey, domain.Post](clock)
-	sessions := newMap[tokenKey, Session](clock)
-	apiKeys := newMap[tokenKey, domain.APIKey](clock)
+	posts := newTableCache[rowKey, domain.Post](clock, tPosts)
+	sessions := newTableCache[tokenKey, Session](clock, tSessions)
+	apiKeys := newTableCache[tokenKey, domain.APIKey](clock, tAPIKeys)
 	return Container{
-		Tenants:  &cachedTenantRepository{c.Tenants, clock, newMap[string, domain.Tenant](clock)},
-		Users:    &cachedUserRepository{c.Users, clock, newMap[rowKey, domain.User](clock), posts, sessions, apiKeys},
-		Posts:    &cachedPostRepository{c.Posts, clock, posts},
-		Sessions: &cachedSessionRepository{c.Sessions.(sessionStore), clock, sessions}, //nolint:forcetypeassert // New builds the concrete repositories, which var _ checks
-		APIKeys:  &cachedAPIKeyRepository{c.APIKeys.(apiKeyStore), clock, apiKeys},     //nolint:forcetypeassert // likewise
+		Tenants:  &cachedTenantRepository{c.Tenants, newTableCache[string, domain.Tenant](clock, tTenants)},
+		Users:    &cachedUserRepository{c.Users, newTableCache[rowKey, domain.User](clock, tUsers), posts, sessions, apiKeys},
+		Posts:    &cachedPostRepository{c.Posts, posts},
+		Sessions: &cachedSessionRepository{c.Sessions.(sessionStore), sessions}, //nolint:forcetypeassert // New builds the concrete repositories, which var _ checks
+		APIKeys:  &cachedAPIKeyRepository{c.APIKeys.(apiKeyStore), apiKeys},     //nolint:forcetypeassert // likewise
 		Txer:     cachedTxer{c.Txer, clock},
 	}
 }
